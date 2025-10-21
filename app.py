@@ -147,10 +147,10 @@ if predict_btn:
             future = pd.DataFrame({'ds': dates})
             forecast = model.predict(future)
             
-            # PEMBULATAN KE 2 DESIMAL
-            forecast['yhat'] = forecast['yhat'].round(2)
-            forecast['yhat_lower'] = forecast['yhat_lower'].round(2)
-            forecast['yhat_upper'] = forecast['yhat_upper'].round(2)
+            # PEMBULATAN KE BILANGAN BULAT
+            forecast['yhat'] = forecast['yhat'].round(0)
+            forecast['yhat_lower'] = forecast['yhat_lower'].round(0)
+            forecast['yhat_upper'] = forecast['yhat_upper'].round(0)
         
         st.success(f"✅ **Prediksi berhasil dibuat untuk {days} hari!**")
         
@@ -162,21 +162,21 @@ if predict_btn:
         
         st.subheader("📊 Ringkasan Prediksi")
         
-        total_prediksi = round(forecast['yhat'].sum(), 2)
-        rata_rata = round(forecast['yhat'].mean(), 2)
-        min_val = round(forecast['yhat'].min(), 2)
-        max_val = round(forecast['yhat'].max(), 2)
+        total_prediksi = int(round(forecast['yhat'].sum(), 0))
+        rata_rata = round(forecast['yhat'].mean(), 0)
+        min_val = int(forecast['yhat'].min())
+        max_val = int(forecast['yhat'].max())
         
         col1, col2 = st.columns(2)
         
         with col1:
-            st.metric("📈 **TOTAL PREDIKSI**", f"{total_prediksi:,.2f} unit", 
+            st.metric("📈 **TOTAL PREDIKSI**", f"{total_prediksi:,} unit", 
                      help="Total prediksi untuk semua hari")
-            st.metric("📊 **Rata-rata/hari**", f"{rata_rata:,.2f} unit")
+            st.metric("📊 **Rata-rata/hari**", f"{rata_rata:,.0f} unit")
         
         with col2:
-            st.metric("⬇️ **Minimum**", f"{min_val:,.2f} unit")
-            st.metric("⬆️ **Maximum**", f"{max_val:,.2f} unit")
+            st.metric("⬇️ **Minimum**", f"{min_val:,} unit")
+            st.metric("⬆️ **Maximum**", f"{max_val:,} unit")
         
         st.markdown("---")
         
@@ -190,9 +190,9 @@ if predict_btn:
         result_df = pd.DataFrame({
             'Tanggal': forecast['ds'].dt.strftime('%Y-%m-%d'),
             'Hari': forecast['ds'].dt.strftime('%A'),
-            'Prediksi': forecast['yhat'].round(2),
-            'Range_Min': forecast['yhat_lower'].round(2),
-            'Range_Max': forecast['yhat_upper'].round(2)
+            'Prediksi': forecast['yhat'].astype(int),
+            'Range_Min': forecast['yhat_lower'].astype(int),
+            'Range_Max': forecast['yhat_upper'].astype(int)
         })
         
         # Day emoji mapping
@@ -219,7 +219,7 @@ if predict_btn:
                 st.write("→")
             
             with col3:
-                st.write(f"**{row['Prediksi']:,.2f} unit** _(Range: {row['Range_Min']:,.2f} - {row['Range_Max']:,.2f})_")
+                st.write(f"**{row['Prediksi']:,} unit** _(Range: {row['Range_Min']:,} - {row['Range_Max']:,})_")
             
             # Add separator every 7 days for better readability
             if (idx + 1) % 7 == 0 and idx < len(result_df) - 1:
@@ -227,7 +227,7 @@ if predict_btn:
         
         # Total at the end
         st.markdown("---")
-        st.markdown(f"### 💰 **TOTAL: {total_prediksi:,.2f} unit** untuk {days} hari")
+        st.markdown(f"### 💰 **TOTAL: {total_prediksi:,} unit** untuk {days} hari")
         
         st.markdown("---")
         
@@ -244,9 +244,11 @@ if predict_btn:
             
             weekly = temp_df.groupby('Week').agg({
                 'Prediksi': ['sum', 'mean', 'count']
-            }).round(2)
+            })
             
             weekly.columns = ['Total', 'Rata-rata', 'Jumlah Hari']
+            weekly['Total'] = weekly['Total'].astype(int)
+            weekly['Rata-rata'] = weekly['Rata-rata'].round(0).astype(int)
             weekly = weekly.reset_index()
             weekly['Minggu'] = weekly['Week'].astype(str)
             weekly = weekly[['Minggu', 'Jumlah Hari', 'Total', 'Rata-rata']]
@@ -358,6 +360,6 @@ with st.expander("❓ Bantuan"):
     - Range > 90 hari: Kurang akurat
     
     ### Catatan:
-    - Semua angka prediksi dibulatkan ke 2 desimal
+    - Semua angka prediksi dibulatkan ke bilangan bulat (tanpa desimal)
     - Format ribuan menggunakan koma (,) untuk readability
     """)
