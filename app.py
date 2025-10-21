@@ -1,7 +1,7 @@
 """
 MINIMAL PREDICTION APP - Ultra Simple
 ======================================
-Fokus: List hari + Total prediksi
+Fokus: List hari + Total prediksi (dengan pembulatan)
 
 Usage:
     streamlit run app_minimal.py
@@ -146,6 +146,11 @@ if predict_btn:
             dates = pd.date_range(start=start, end=end, freq='D')
             future = pd.DataFrame({'ds': dates})
             forecast = model.predict(future)
+            
+            # PEMBULATAN KE 2 DESIMAL
+            forecast['yhat'] = forecast['yhat'].round(2)
+            forecast['yhat_lower'] = forecast['yhat_lower'].round(2)
+            forecast['yhat_upper'] = forecast['yhat_upper'].round(2)
         
         st.success(f"✅ **Prediksi berhasil dibuat untuk {days} hari!**")
         
@@ -157,10 +162,10 @@ if predict_btn:
         
         st.subheader("📊 Ringkasan Prediksi")
         
-        total_prediksi = forecast['yhat'].sum()
-        rata_rata = forecast['yhat'].mean()
-        min_val = forecast['yhat'].min()
-        max_val = forecast['yhat'].max()
+        total_prediksi = round(forecast['yhat'].sum(), 2)
+        rata_rata = round(forecast['yhat'].mean(), 2)
+        min_val = round(forecast['yhat'].min(), 2)
+        max_val = round(forecast['yhat'].max(), 2)
         
         col1, col2 = st.columns(2)
         
@@ -214,11 +219,7 @@ if predict_btn:
                 st.write("→")
             
             with col3:
-                # Format with thousand separator (titik) and 2 decimals (koma)
-                pred_formatted = f"{row['Prediksi']:,.2f}".replace(',', 'X').replace('.', ',').replace('X', '.')
-                min_formatted = f"{row['Range_Min']:,.2f}".replace(',', 'X').replace('.', ',').replace('X', '.')
-                max_formatted = f"{row['Range_Max']:,.2f}".replace(',', 'X').replace('.', ',').replace('X', '.')
-                st.write(f"**{pred_formatted} unit** _(Range: {min_formatted} - {max_formatted})_")
+                st.write(f"**{row['Prediksi']:,.2f} unit** _(Range: {row['Range_Min']:,.2f} - {row['Range_Max']:,.2f})_")
             
             # Add separator every 7 days for better readability
             if (idx + 1) % 7 == 0 and idx < len(result_df) - 1:
@@ -226,8 +227,7 @@ if predict_btn:
         
         # Total at the end
         st.markdown("---")
-        total_formatted = f"{total_prediksi:,.2f}".replace(',', 'X').replace('.', ',').replace('X', '.')
-        st.markdown(f"### 💰 **TOTAL: {total_formatted} unit** untuk {days} hari")
+        st.markdown(f"### 💰 **TOTAL: {total_prediksi:,.2f} unit** untuk {days} hari")
         
         st.markdown("---")
         
@@ -249,11 +249,6 @@ if predict_btn:
             weekly.columns = ['Total', 'Rata-rata', 'Jumlah Hari']
             weekly = weekly.reset_index()
             weekly['Minggu'] = weekly['Week'].astype(str)
-            
-            # Format numbers for display
-            weekly['Total'] = weekly['Total'].apply(lambda x: f"{x:,.2f}".replace(',', 'X').replace('.', ',').replace('X', '.'))
-            weekly['Rata-rata'] = weekly['Rata-rata'].apply(lambda x: f"{x:,.2f}".replace(',', 'X').replace('.', ',').replace('X', '.'))
-            
             weekly = weekly[['Minggu', 'Jumlah Hari', 'Total', 'Rata-rata']]
             
             st.dataframe(weekly, use_container_width=True, hide_index=True)
@@ -268,20 +263,13 @@ if predict_btn:
         
         # Prepare CSV
         csv_df = result_df.copy()
-        
-        # Format numbers for CSV (Indonesian format: titik untuk ribuan, koma untuk desimal)
-        csv_df['Prediksi'] = csv_df['Prediksi'].apply(lambda x: f"{x:,.2f}".replace(',', 'X').replace('.', ',').replace('X', '.'))
-        csv_df['Range_Min'] = csv_df['Range_Min'].apply(lambda x: f"{x:,.2f}".replace(',', 'X').replace('.', ',').replace('X', '.'))
-        csv_df['Range_Max'] = csv_df['Range_Max'].apply(lambda x: f"{x:,.2f}".replace(',', 'X').replace('.', ',').replace('X', '.'))
-        
         csv_df.columns = ['Tanggal', 'Hari', 'Prediksi (unit)', 'Range Min', 'Range Max']
         
         # Add total row
-        total_formatted_csv = f"{total_prediksi:,.2f}".replace(',', 'X').replace('.', ',').replace('X', '.')
         total_row = pd.DataFrame({
             'Tanggal': ['TOTAL'],
             'Hari': [''],
-            'Prediksi (unit)': [total_formatted_csv],
+            'Prediksi (unit)': [total_prediksi],
             'Range Min': [''],
             'Range Max': ['']
         })
@@ -316,19 +304,12 @@ st.subheader("📊 Informasi Data Historis")
 col1, col2, col3 = st.columns(3)
 
 try:
-    mean_hist = df['Qty Out'].mean()
-    total_hist = df['Qty Out'].sum()
-    
-    # Format dengan pemisah titik dan 2 desimal
-    mean_formatted = f"{mean_hist:,.2f}".replace(',', 'X').replace('.', ',').replace('X', '.')
-    total_formatted = f"{total_hist:,.2f}".replace(',', 'X').replace('.', ',').replace('X', '.')
-    
     with col1:
         st.info(f"""
         **📈 Statistik**
         
-        Mean: {mean_formatted}
-        Total: {total_formatted}
+        Mean: {df['Qty Out'].mean():.2f}
+        Total: {df['Qty Out'].sum():,.2f}
         Records: {len(df)}
         """)
     
@@ -341,15 +322,12 @@ try:
         """)
     
     with col3:
-        mape_formatted = f"{metrics['MAPE']:.2f}".replace('.', ',')
-        mae_formatted = f"{metrics['MAE']:,.2f}".replace(',', 'X').replace('.', ',').replace('X', '.')
-        
         st.info(f"""
         **🎯 Model**
         
         {quality}
-        MAPE: {mape_formatted}%
-        MAE: {mae_formatted}
+        MAPE: {metrics['MAPE']:.1f}%
+        MAE: {metrics['MAE']:.2f}
         """)
 
 except Exception as e:
@@ -378,4 +356,8 @@ with st.expander("❓ Bantuan"):
     - Range 7-30 hari: Optimal
     - Range 30-90 hari: Cukup baik
     - Range > 90 hari: Kurang akurat
+    
+    ### Catatan:
+    - Semua angka prediksi dibulatkan ke 2 desimal
+    - Format ribuan menggunakan koma (,) untuk readability
     """)
